@@ -19,7 +19,7 @@ def colorselector(num_of_bikes, val):
         color = 'rgb(0,255,0)'
     return color
 
-#page = "/home"
+#page = "/home" hello
 
 app.layout = html.Div(
     [
