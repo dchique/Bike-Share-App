@@ -13,7 +13,7 @@ app = dash.Dash(
     #url_base_pathname=r"/home/",
     external_stylesheets= [dbc.themes.DARKLY],
     suppress_callback_exceptions=True,
-    title="BikeCast - NYC"
+    title="BikeCast - NYC - test"
 )
 
 server = app.server
