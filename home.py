@@ -5,62 +5,67 @@ import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 import pandas as pd
 from dash.dependencies import Input, Output, State, ALL, MATCH
-#import Pages.marine, Pages.offshore, Pages.lookup, Pages.drilldown, Pages.configure, Pages.start, Pages.removal
+# import Pages.marine, Pages.offshore, Pages.lookup, Pages.drilldown, Pages.configure, Pages.start, Pages.removal
 from bike_app import app, server, asts
+import os
 
 public_token = 'pk.eyJ1IjoiZGNoaXF1ZTMiLCJhIjoiY2tmdmg5Y2FjMTFmbzJzczMwcnRhMG50bCJ9.JgdIR-3Nkxb2hRc-5UQ79w'
+
 
 def colorselector(num_of_bikes, val):
     if num_of_bikes < val:
         color = 'rgb(255,0,0)'
-    elif num_of_bikes - 2  < val:
+    elif num_of_bikes - 2 < val:
         color = 'rgb(255,255,0)'
     elif num_of_bikes > val:
         color = 'rgb(0,255,0)'
     return color
 
-#page = "/home" hello
+
+# page = "/home" hello
 
 app.layout = html.Div(
     [
         dcc.Location(id="url", refresh=False),
         html.Div(id="nav-bar-div", children=asts.navbar()),
-        html.Div(id="page-content", style={"display":"flex",
-                                            "flex-flow":"column",
-                                            "height":"100%",
-                                            "flex":"1 1 auto"}),
-    ], style={"display":"flex",
-                                            "flex-flow":"column",
-                                            "height":"100%"}
+        html.Div(id="page-content", style={"display": "flex",
+                                           "flex-flow": "column",
+                                           "height": "100%",
+                                           "flex": "1 1 auto"}),
+    ], style={"display": "flex",
+              "flex-flow": "column",
+              "height": "100%"}
 )
 
 landing_modal = dbc.Modal(
-            [
-                dbc.ModalHeader("Welcome to BikeCast for NYC!", style={'justify-content':'center'}),
-                dbc.ModalBody("You can use BikeCast to browse through citibike statikons in NYC. Set a time and party size to see predicted availability at a future time!"),
-                dbc.ModalFooter(
-                    dbc.Button("Continue", id="close-lg", className="ml-mr-auto"), style={'justify-content':'center'}
-                ),
-            ],
-            id="modal-lg",
-            size="lg",
-            is_open=False,
-            centered=True
-        )
+    [
+        dbc.ModalHeader("Welcome to BikeCast for NYC!", style={'justify-content': 'center'}),
+        dbc.ModalBody(
+            "You can use BikeCast to browse through citibike statikons in NYC. Set a time and party size to see predicted availability at a future time!"),
+        dbc.ModalFooter(
+            dbc.Button("Continue", id="close-lg", className="ml-mr-auto"), style={'justify-content': 'center'}
+        ),
+    ],
+    id="modal-lg",
+    size="lg",
+    is_open=False,
+    centered=True
+)
 
 toast = dbc.Toast(
-            id="graph-toast",
-            is_open=False,
-            dismissable=True,
-            icon="info",
-            # top: 66 positions the toast below the navbar
-            style={"position": "fixed", "top": 82, "left": 10, "width": 450},
-        ),
+    id="graph-toast",
+    is_open=False,
+    dismissable=True,
+    icon="info",
+    # top: 66 positions the toast below the navbar
+    style={"position": "fixed", "top": 82, "left": 10, "width": 450},
+),
+
 
 def home_layout():
     return [
         landing_modal,
-        dcc.Graph(config={"displayModeBar":False}, style={"flex":"1 1 auto","overflow":"hidden"}, id='map-graph'),
+        dcc.Graph(config={"displayModeBar": False}, style={"flex": "1 1 auto", "overflow": "hidden"}, id='map-graph'),
         html.Div(toast)
     ]
 
@@ -75,8 +80,9 @@ def display_page(pathname):
     else:
         return home_layout()
 
+
 @app.callback(
-    Output('modal-lg','is_open'),
+    Output('modal-lg', 'is_open'),
     [Input("close-lg", "n_clicks")]
 )
 def close_modal(n):
@@ -85,46 +91,50 @@ def close_modal(n):
     else:
         return False
 
+
 @app.callback(
-    Output('party-size-num-label','children'),
+    Output('party-size-num-label', 'children'),
     [Input("party-size", "value")]
 )
 def change_party_val(value):
     return 'Party Size: ' + str(value)
 
+
 @app.callback(
-    Output('arrival-time-label','children'),
+    Output('arrival-time-label', 'children'),
     [Input("time-select", "value")]
 )
 def change_time_val(value):
     value = int(value)
     return 'Arrival Time: ' + asts.timestamps[value].strftime('%b %d, %H:%M')
 
+
 @app.callback(
     Output('map-graph', 'figure'),
-    [Input('time-select','value'),
-    Input('party-size','value')],
-    [State('map-graph','relayoutData')]
+    [Input('time-select', 'value'),
+     Input('party-size', 'value')],
+    [State('map-graph', 'relayoutData')]
 )
 def update_graph(timeval, partyval, relayout):
     timeval = int(timeval)
     partyval = int(partyval)
     mapbox = go.Figure()
 
-    bike_station_colors = asts.bike_stations.loc[:,'available_bikes'].apply(lambda x: colorselector(x[timeval], partyval))
+    bike_station_colors = asts.bike_stations.loc[:, 'available_bikes'].apply(
+        lambda x: colorselector(x[timeval], partyval))
 
     mapbox.add_trace(go.Scattermapbox(
-            lat=asts.bike_stations["_lat"],
-            lon=asts.bike_stations["_long"],
-            mode='markers',
-            marker=go.scattermapbox.Marker(
-                size=17,
-                color=bike_station_colors,
-                opacity=0.7
-            ),
-            text=asts.bike_stations["dock_name"],
-            hoverinfo='text'
-        ))
+        lat=asts.bike_stations["_lat"],
+        lon=asts.bike_stations["_long"],
+        mode='markers',
+        marker=go.scattermapbox.Marker(
+            size=17,
+            color=bike_station_colors,
+            opacity=0.7
+        ),
+        text=asts.bike_stations["dock_name"],
+        hoverinfo='text'
+    ))
 
     if relayout in ['', None, []]:
         mapbox.update_layout(
@@ -142,7 +152,7 @@ def update_graph(timeval, partyval, relayout):
                 zoom=12,
                 style='dark'
             ),
-            margin={"r":0,"l":0,"b":0,"t":0},
+            margin={"r": 0, "l": 0, "b": 0, "t": 0},
         )
     else:
         mapbox.update_layout(
@@ -157,38 +167,39 @@ def update_graph(timeval, partyval, relayout):
                 zoom=relayout['mapbox.zoom'],
                 style='dark'
             ),
-            margin={"r":0,"l":0,"b":0,"t":0},
+            margin={"r": 0, "l": 0, "b": 0, "t": 0},
         )
 
     return mapbox
 
+
 @app.callback(
-    [Output('graph-toast','header'),
-    Output('graph-toast','is_open'),
-    Output('graph-toast','children')],
-    [Input('map-graph','clickData')]
+    [Output('graph-toast', 'header'),
+     Output('graph-toast', 'is_open'),
+     Output('graph-toast', 'children')],
+    [Input('map-graph', 'clickData')]
 )
 def update_and_open_toast(clickdata):
     if clickdata:
         point_data = clickdata['points'][0]
-        figure={
+        figure = {
             "data": [
                 {
                     "x": asts.timestamps,
-                    "y": asts.bike_stations.loc[point_data['pointIndex'],'available_bikes'],
+                    "y": asts.bike_stations.loc[point_data['pointIndex'], 'available_bikes'],
                     "type": "scatter",
                     "name": "Available Bikes Line"
                 }]
             ,
             "layout": {"height": 320,
-                        "barmode": 'relative',
-                        "showlegend":False,
-                        "margin": {"t": 40, "l": 40, "r": 40},
-                        "plot_bgcolor": "rgba(0,0,0,0)",
-                        "paper_bgcolor": "rgba(0,0,0,0.3)",
-                        "font":{"color":"rgb(230,230,230)"}}
+                       "barmode": 'relative',
+                       "showlegend": False,
+                       "margin": {"t": 40, "l": 40, "r": 40},
+                       "plot_bgcolor": "rgba(0,0,0,0)",
+                       "paper_bgcolor": "rgba(0,0,0,0.3)",
+                       "font": {"color": "rgb(230,230,230)"}}
         }
-        return point_data['text'], True, dcc.Graph(figure=figure, config={'displayModeBar':False})
+        return point_data['text'], True, dcc.Graph(figure=figure, config={'displayModeBar': False})
     return dash.no_update, dash.no_update, dash.no_update
 
 
@@ -202,4 +213,6 @@ def toggle_navbar_collapse(n, is_open):
         return not is_open
     return is_open
 
-server.run(debug=True, host="0.0.0.0", port=8050)
+
+port = int(os.environ.get('PORT', 8050))
+server.run(debug=True, host="0.0.0.0", port=port)
