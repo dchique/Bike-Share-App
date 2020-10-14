@@ -30,7 +30,7 @@ class Assets:
             "text-decoration": "none",
         }
 
-        brand_im = ".\\assets\\bikecast.png"
+        brand_im = "./assets/bikecast.png"
         
         self.brand_im = base64.b64encode(open(brand_im, "rb").read())  # Brand Logo
 
