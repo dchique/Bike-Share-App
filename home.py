@@ -73,7 +73,7 @@ landing_modal = dbc.Modal(
     [
         dbc.ModalHeader("Welcome to BikeCast for NYC!", style={'justify-content': 'center'}),
         dbc.ModalBody(
-            "You can use BikeCast to browse through citibike statikons in NYC. Set a time and party size to see predicted availability at a future time! Hello!"),
+            "You can use BikeCast to browse through citibike statikons in NYC. Set a time and party size to see predicted availability at a future time!"),
     ],
     id="modal-lg",
     size="xl",
