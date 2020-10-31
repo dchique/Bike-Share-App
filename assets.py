@@ -15,7 +15,7 @@ class Assets:
         self.selected_link_style = {
             "display": "block",
             "color": "white",
-            "backgroundColor": "#193f5f",
+            "backgroundColor": "grey",
             "fontSize": 16,
             "padding": "5px 30px",
             "text-decoration": "none",
@@ -24,7 +24,7 @@ class Assets:
         self.unselected_link_style = {
             "display": "block",
             "color": "white",
-            "backgroundColor": "#002a4e",
+            "backgroundColor": "grey",
             "fontSize": 16,
             "padding": "5px 30px",
             "text-decoration": "none",
@@ -89,6 +89,7 @@ class Assets:
                 dbc.NavbarToggler(id="navbar-toggler"),
                 dbc.Collapse(
                     [
+                    dbc.Row(),
                     dbc.Row(
                         [dbc.Col(dbc.Nav(self.dropdown, navbar=True))],
                         no_gutters=True,

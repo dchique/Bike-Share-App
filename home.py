@@ -14,15 +14,46 @@ public_token = 'pk.eyJ1IjoiZGNoaXF1ZTMiLCJhIjoiY2tmdmg5Y2FjMTFmbzJzczMwcnRhMG50b
 
 def colorselector(num_of_bikes, val):
     if num_of_bikes < val:
-        color = 'rgb(255,0,0)'
+        #color = 'rgb(255,0,0)'
+        color = 'rgb(0,255,0)'
     elif num_of_bikes - 2 < val:
-        color = 'rgb(255,255,0)'
+        #color = 'rgb(255,255,0)'
+        color = 'rgb(0,255,0)'
     elif num_of_bikes > val:
         color = 'rgb(0,255,0)'
     return color
 
 
 # page = "/home" hello
+SIDEBAR_STYLE = {
+    "position": "fixed",
+    "top": 0,
+    "left": 0,
+    "bottom": 0,
+    "width": "16rem",
+    "padding": "2rem 1rem",
+    "background-color": "#f8f9fa",
+}
+
+sidebar = html.Div(
+    [
+        html.H2("Sidebar", className="display-4"),
+        html.Hr(),
+        html.P(
+            "A simple sidebar layout with navigation links", className="lead"
+        ),
+        dbc.Nav(
+            [
+                dbc.NavLink("Page 1", href="/page-1", id="page-1-link"),
+                dbc.NavLink("Page 2", href="/page-2", id="page-2-link"),
+                dbc.NavLink("Page 3", href="/page-3", id="page-3-link"),
+            ],
+            vertical=True,
+            pills=True,
+        ),
+    ],
+    style=SIDEBAR_STYLE,
+)
 
 app.layout = html.Div(
     [
@@ -32,6 +63,7 @@ app.layout = html.Div(
                                            "flex-flow": "column",
                                            "height": "100%",
                                            "flex": "1 1 auto"}),
+        # sidebar
     ], style={"display": "flex",
               "flex-flow": "column",
               "height": "100%"}
@@ -42,13 +74,10 @@ landing_modal = dbc.Modal(
         dbc.ModalHeader("Welcome to BikeCast for NYC!", style={'justify-content': 'center'}),
         dbc.ModalBody(
             "You can use BikeCast to browse through citibike statikons in NYC. Set a time and party size to see predicted availability at a future time!"),
-        dbc.ModalFooter(
-            dbc.Button("Continue", id="close-lg", className="ml-mr-auto"), style={'justify-content': 'center'}
-        ),
     ],
     id="modal-lg",
-    size="lg",
-    is_open=False,
+    size="xl",
+    is_open=True,
     centered=True
 )
 
@@ -66,7 +95,8 @@ def home_layout():
     return [
         landing_modal,
         dcc.Graph(config={"displayModeBar": False}, style={"flex": "1 1 auto", "overflow": "hidden"}, id='map-graph'),
-        html.Div(toast)
+        html.Div(toast),
+
     ]
 
 
@@ -80,16 +110,15 @@ def display_page(pathname):
     else:
         return home_layout()
 
-
 @app.callback(
     Output('modal-lg', 'is_open'),
-    [Input("close-lg", "n_clicks")]
+    [Input("close-lg", "n_clicks"),  Input("close-backdrop", "n_clicks")]
 )
 def close_modal(n):
     if n:
-        return False
+        return 'static'
     else:
-        return False
+        return 'static'
 
 
 @app.callback(
@@ -214,5 +243,5 @@ def toggle_navbar_collapse(n, is_open):
     return is_open
 
 
-port = int(os.environ.get('PORT', 8050))
+port = int(os.environ.get('PORT', 8080))
 server.run(debug=True, host="0.0.0.0", port=port)
