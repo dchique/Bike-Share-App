@@ -58,14 +58,14 @@ sidebar = html.Div(
 app.layout = html.Div(
     [
         dcc.Location(id="url", refresh=False),
-        html.Div(id="nav-bar-div", children=asts.navbar()),
+        html.Div(id="nav-bar-div", children=asts.navbar(), style={'width':'22%'}),
         html.Div(id="page-content", style={"display": "flex",
                                            "flex-flow": "column",
                                            "height": "100%",
                                            "flex": "1 1 auto"}),
         # sidebar
     ], style={"display": "flex",
-              "flex-flow": "column",
+              "flex-flow": "row",
               "height": "100%"}
 )
 
@@ -120,32 +120,30 @@ def close_modal(n):
     else:
         return 'static'
 
+@app.callback(
+    [Output('time-select-hour','options'),
+    Output('time-select-hour','value')],
+    [Input('time-select-day','date')]
+)
+def update_hour_dropdown(day):
+    options = [{'label': t.strftime('%I:%M %p'), 'value': t.strftime('%Y-%m-%d %H')} for t in asts.timestamps if t.strftime('%Y-%m-%d') == day]
+    return options, options[0]['value']
 
 @app.callback(
     Output('party-size-num-label', 'children'),
     [Input("party-size", "value")]
 )
 def change_party_val(value):
-    return 'Party Size: ' + str(value)
-
-
-@app.callback(
-    Output('arrival-time-label', 'children'),
-    [Input("time-select", "value")]
-)
-def change_time_val(value):
-    value = int(value)
-    return 'Arrival Time: ' + asts.timestamps[value].strftime('%b %d, %H:%M')
-
+    return 'Bikes Needed: ' + str(value)
 
 @app.callback(
     Output('map-graph', 'figure'),
-    [Input('time-select', 'value'),
+    [Input('time-select-hour', 'value'),
      Input('party-size', 'value')],
     [State('map-graph', 'relayoutData')]
 )
 def update_graph(timeval, partyval, relayout):
-    timeval = int(timeval)
+    print(timeval)
     partyval = int(partyval)
     mapbox = go.Figure()
 
