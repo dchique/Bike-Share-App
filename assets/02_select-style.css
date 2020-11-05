@@ -1,3 +1,20 @@
 html, body, #react-entry-point {
   height: 100%;
 }
+
+.side-bar-pad {
+  margin-top: 20px;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.nav-bar {
+  padding: 5px;
+  padding-left: 15px;
+  background: #202020;
+}
+
+.side-bar {
+  width: 22%;
+  background: #121212;
+}

@@ -23,47 +23,15 @@ def colorselector(num_of_bikes, val):
         color = 'rgb(0,255,0)'
     return color
 
-
-# page = "/home" hello
-SIDEBAR_STYLE = {
-    "position": "fixed",
-    "top": 0,
-    "left": 0,
-    "bottom": 0,
-    "width": "16rem",
-    "padding": "2rem 1rem",
-    "background-color": "#f8f9fa",
-}
-
-sidebar = html.Div(
-    [
-        html.H2("Sidebar", className="display-4"),
-        html.Hr(),
-        html.P(
-            "A simple sidebar layout with navigation links", className="lead"
-        ),
-        dbc.Nav(
-            [
-                dbc.NavLink("Page 1", href="/page-1", id="page-1-link"),
-                dbc.NavLink("Page 2", href="/page-2", id="page-2-link"),
-                dbc.NavLink("Page 3", href="/page-3", id="page-3-link"),
-            ],
-            vertical=True,
-            pills=True,
-        ),
-    ],
-    style=SIDEBAR_STYLE,
-)
-
 app.layout = html.Div(
     [
+        html.Div(id="side-bar-div", children=asts.sidebar(), className="side-bar"),
         dcc.Location(id="url", refresh=False),
-        html.Div(id="nav-bar-div", children=asts.navbar(), style={'width':'22%'}),
+        # html.Div(id="nav-bar-div", children=asts.navbar(), style={'width':'22%'}),
         html.Div(id="page-content", style={"display": "flex",
                                            "flex-flow": "column",
                                            "height": "100%",
                                            "flex": "1 1 auto"}),
-        # sidebar
     ], style={"display": "flex",
               "flex-flow": "row",
               "height": "100%"}
@@ -87,7 +55,7 @@ toast = dbc.Toast(
     dismissable=True,
     icon="info",
     # top: 66 positions the toast below the navbar
-    style={"position": "fixed", "top": 82, "left": 10, "width": 450},
+    style={"position": "fixed", "top": 40, "right": 10, "width": 450},
 ),
 
 
@@ -96,7 +64,6 @@ def home_layout():
         landing_modal,
         dcc.Graph(config={"displayModeBar": False}, style={"flex": "1 1 auto", "overflow": "hidden"}, id='map-graph'),
         html.Div(toast),
-
     ]
 
 
@@ -121,13 +88,13 @@ def close_modal(n):
         return 'static'
 
 @app.callback(
-    [Output('time-select-hour','options'),
-    Output('time-select-hour','value')],
+    [Output('time-select-hour','options'), Output('time-select-hour','value')],
     [Input('time-select-day','date')]
 )
 def update_hour_dropdown(day):
-    options = [{'label': t.strftime('%I:%M %p'), 'value': t.strftime('%Y-%m-%d %H')} for t in asts.timestamps if t.strftime('%Y-%m-%d') == day]
-    return options, options[0]['value']
+    return day
+    # options = [{'label': t.strftime('%I:%M %p'), 'value': t.strftime('%Y-%m-%d %H')} for t in asts.timestamps if t.strftime('%Y-%m-%d') == day]
+    # return options, options[0]['value']
 
 @app.callback(
     Output('party-size-num-label', 'children'),
@@ -143,12 +110,11 @@ def change_party_val(value):
     [State('map-graph', 'relayoutData')]
 )
 def update_graph(timeval, partyval, relayout):
-    print(timeval)
     partyval = int(partyval)
     mapbox = go.Figure()
 
-    bike_station_colors = asts.bike_stations.loc[:, 'available_bikes'].apply(
-        lambda x: colorselector(x[timeval], partyval))
+    # bike_station_colors = asts.bike_stations.loc[:, 'available_bikes'].apply(
+    #     lambda x: colorselector(x[timeval], partyval))
 
     mapbox.add_trace(go.Scattermapbox(
         lat=asts.bike_stations["_lat"],
@@ -156,7 +122,7 @@ def update_graph(timeval, partyval, relayout):
         mode='markers',
         marker=go.scattermapbox.Marker(
             size=17,
-            color=bike_station_colors,
+            color='rgb(0,255,0)',  # bike_station_colors,
             opacity=0.7
         ),
         text=asts.bike_stations["dock_name"],
@@ -229,17 +195,14 @@ def update_and_open_toast(clickdata):
         return point_data['text'], True, dcc.Graph(figure=figure, config={'displayModeBar': False})
     return dash.no_update, dash.no_update, dash.no_update
 
-
-@app.callback(
-    Output("navbar-collapse", "is_open"),
-    [Input("navbar-toggler", "n_clicks")],
-    [State("navbar-collapse", "is_open")],
-)
-def toggle_navbar_collapse(n, is_open):
-    if n:
-        return not is_open
-    return is_open
-
+# @app.callback(
+#     Output("example-output", "children"), [Input("submit-button", "n_clicks")]
+# )
+# def on_button_click(n):
+#     if n is None:
+#         return "Not clicked."
+#     else:
+#         return "Clicked {n} times."
 
 port = int(os.environ.get('PORT', 8080))
 server.run(debug=True, host="0.0.0.0", port=port)
