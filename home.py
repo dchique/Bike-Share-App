@@ -7,6 +7,8 @@ import pandas as pd
 from dash.dependencies import Input, Output, State, ALL, MATCH
 # import Pages.marine, Pages.offshore, Pages.lookup, Pages.drilldown, Pages.configure, Pages.start, Pages.removal
 from bike_app import app, server, asts
+from google_places_api import query_gp
+import numpy as np
 import os
 
 public_token = 'pk.eyJ1IjoiZGNoaXF1ZTMiLCJhIjoiY2tmdmg5Y2FjMTFmbzJzczMwcnRhMG50bCJ9.JgdIR-3Nkxb2hRc-5UQ79w'
@@ -14,14 +16,27 @@ public_token = 'pk.eyJ1IjoiZGNoaXF1ZTMiLCJhIjoiY2tmdmg5Y2FjMTFmbzJzczMwcnRhMG50b
 
 def colorselector(num_of_bikes, val):
     if num_of_bikes < val:
-        #color = 'rgb(255,0,0)'
-        color = 'rgb(0,255,0)'
+        color = 'rgb(255,0,0)'
+        #color = 'rgb(0,255,0)'
     elif num_of_bikes - 2 < val:
-        #color = 'rgb(255,255,0)'
-        color = 'rgb(0,255,0)'
+        color = 'rgb(255,255,0)'
+        #color = 'rgb(0,255,0)'
     elif num_of_bikes > val:
         color = 'rgb(0,255,0)'
     return color
+
+def filter_by_radius(df, pos, r):
+    R = 6371e3 # Meters
+    phi1 = pos['lat']*np.pi/180
+    phi2 = df.loc[:,'_lat']*np.pi/180
+    dphi = (df.loc[:,'_lat'] - pos['lat'])*np.pi/180
+    dlamb = (df.loc[:,'_long'] - pos['long'])*np.pi/180
+    a = np.sin(dphi/2) * np.sin(dphi/2) + np.cos(phi1)*np.cos(phi2)*np.sin(dlamb/2)*np.sin(dlamb/2)
+    c = 2*np.arctan2(np.sqrt(a), np.sqrt(1-a))
+
+    d = R * c # in meters
+    return df.loc[d <= r,'dock_id']
+
 
 app.layout = html.Div(
     [
@@ -55,7 +70,8 @@ toast = dbc.Toast(
     dismissable=True,
     icon="info",
     # top: 66 positions the toast below the navbar
-    style={"position": "fixed", "top": 40, "right": 10, "width": 450},
+    style={"position": "fixed", "top": 40, "right": 10, "width": 650},
+    className="dash-bootstrap"
 ),
 
 
@@ -92,9 +108,8 @@ def close_modal(n):
     [Input('time-select-day','date')]
 )
 def update_hour_dropdown(day):
-    return day
-    # options = [{'label': t.strftime('%I:%M %p'), 'value': t.strftime('%Y-%m-%d %H')} for t in asts.timestamps if t.strftime('%Y-%m-%d') == day]
-    # return options, options[0]['value']
+    options = [{'label': t.strftime('%I:%M %p'), 'value': t.strftime('%Y-%m-%d %H')} for t in asts.timestamps if t.strftime('%Y-%m-%d') == day]
+    return options, options[0]['value']
 
 @app.callback(
     Output('party-size-num-label', 'children'),
@@ -106,30 +121,41 @@ def change_party_val(value):
 @app.callback(
     Output('map-graph', 'figure'),
     [Input('time-select-hour', 'value'),
-     Input('party-size', 'value')],
+     Input('party-size', 'value'),
+     Input('place-filter','value')],
     [State('map-graph', 'relayoutData')]
 )
-def update_graph(timeval, partyval, relayout):
+def update_graph(timeval, partyval, place_filter, relayout):
+    timestamp = pd.to_datetime(timeval, format='%Y-%m-%d %H')
+
     partyval = int(partyval)
     mapbox = go.Figure()
+    subset_predictions = asts.predictions.loc[asts.predictions['timestamps'] == timestamp, :]
 
-    # bike_station_colors = asts.bike_stations.loc[:, 'available_bikes'].apply(
-    #     lambda x: colorselector(x[timeval], partyval))
+    subset_predictions.loc[:,'colors'] = subset_predictions.loc[:, 'predicted_avail_bikes_cnt'].apply(
+        lambda x: colorselector(x, partyval))
+
+    merged = asts.bike_stations.merge(subset_predictions, left_on='dock_id', right_on='station_id', how='left')
+
+    if place_filter not in ['',None, []]:
+        pos = {'lat': float(place_filter.split(',')[0]), 'long': float(place_filter.split(',')[1])}
+        docks = filter_by_radius(merged, pos, 500)
+        merged = merged.loc[merged['dock_id'].isin(docks.values)]
 
     mapbox.add_trace(go.Scattermapbox(
-        lat=asts.bike_stations["_lat"],
-        lon=asts.bike_stations["_long"],
+        lat=merged["_lat"],
+        lon=merged["_long"],
         mode='markers',
         marker=go.scattermapbox.Marker(
             size=17,
-            color='rgb(0,255,0)',  # bike_station_colors,
+            color= merged["colors"],
             opacity=0.7
         ),
-        text=asts.bike_stations["dock_name"],
+        text=merged["dock_name"],
         hoverinfo='text'
     ))
 
-    if relayout in ['', None, []]:
+    if relayout in ['', None, [], {'autosize': True}]:
         mapbox.update_layout(
             autosize=True,
             hovermode='closest',
@@ -170,39 +196,71 @@ def update_graph(timeval, partyval, relayout):
     [Output('graph-toast', 'header'),
      Output('graph-toast', 'is_open'),
      Output('graph-toast', 'children')],
-    [Input('map-graph', 'clickData')]
+    [Input('map-graph', 'clickData'),
+     Input('party-size','value')],
+    [State('time-select-hour', 'value')]
 )
-def update_and_open_toast(clickdata):
+def update_and_open_toast(clickdata, partyval, timeval):
     if clickdata:
         point_data = clickdata['points'][0]
+        timestamp = pd.to_datetime(timeval, format='%Y-%m-%d %H')
+        dock_id = asts.bike_stations.loc[point_data['pointIndex'], 'dock_id']
+        start = max([timestamp-pd.Timedelta('6H'), asts.timestamps[0]]) # Pick the max between the selected time - 6 Hours or the minimum of available timestamps
+        end = min([timestamp+pd.Timedelta('6H'), asts.timestamps[-1]]) # Same but opposite
+        graph_data = asts.predictions.loc[(asts.predictions['station_id'] == dock_id) & 
+                                            (asts.predictions['timestamps'] >= start) & 
+                                            (asts.predictions['timestamps'] <= end), :].sort_values(by='timestamps')
         figure = {
             "data": [
                 {
-                    "x": asts.timestamps,
-                    "y": asts.bike_stations.loc[point_data['pointIndex'], 'available_bikes'],
+                    "x": graph_data.loc[:,'timestamps'],
+                    "y": graph_data.loc[:,'predicted_avail_bikes_cnt'],
                     "type": "scatter",
                     "name": "Available Bikes Line"
                 }]
             ,
-            "layout": {"height": 320,
+            "layout": {"height": 420,
                        "barmode": 'relative',
                        "showlegend": False,
-                       "margin": {"t": 40, "l": 40, "r": 40},
+                       "margin": {"t": 40, "l": 60, "r": 40},
                        "plot_bgcolor": "rgba(0,0,0,0)",
                        "paper_bgcolor": "rgba(0,0,0,0.3)",
-                       "font": {"color": "rgb(230,230,230)"}}
+                       "font": {"color": "rgb(230,230,230)"},
+                       "yaxis": {"title": "Predicted Bike Availability"},
+                       'shapes': [
+                                    # Line Horizontal
+                                    {
+                                        'type': 'line',
+                                        'x0': start,
+                                        'y0': partyval,
+                                        'x1': end,
+                                        'y1': partyval,
+                                        'line': {
+                                            'color': 'rgb(50, 171, 96)',
+                                            'width': 4
+                                        },
+                                    }
+                                ],}
         }
         return point_data['text'], True, dcc.Graph(figure=figure, config={'displayModeBar': False})
     return dash.no_update, dash.no_update, dash.no_update
 
-# @app.callback(
-#     Output("example-output", "children"), [Input("submit-button", "n_clicks")]
-# )
-# def on_button_click(n):
-#     if n is None:
-#         return "Not clicked."
-#     else:
-#         return "Clicked {n} times."
+@app.callback(
+    Output("place-filter", "options"), 
+    [Input("submit-button", "n_clicks")],
+    [State("location-search","value")]
+)
+def on_button_click(n, loc):
+    if n and loc not in ['', None, []]:
+        results = query_gp(loc)
+        options = []
+        for p in results.places:
+            p.get_details()
+            options += [{'label': p.formatted_address, 'value': str(p.geo_location['lat']) + "," + str(p.geo_location['lng'])}]
+        print(options)
+        return options
+    else:
+        return dash.no_update
 
 port = int(os.environ.get('PORT', 8080))
 server.run(debug=True, host="0.0.0.0", port=port)
