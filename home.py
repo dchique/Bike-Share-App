@@ -37,6 +37,21 @@ def filter_by_radius(df, pos, r):
     d = R * c # in meters
     return df.loc[d <= r,'dock_id']
 
+def draw_circle(r):
+    x = []
+    y = []
+    for d in range(0,361,1):
+        x += [r*np.sin(d)]
+        y += [r*np.cos(d)]
+    return np.array(x), np.array(y)
+
+def convert_circle_to_latlon(pos, r):
+    R = 6371e3
+    x, y = draw_circle(r)
+    lons = pos['long'] + (x*180)/(R*np.pi*np.cos(pos['lat']*np.pi/180))
+    lats = pos['lat'] + (y*180)/(R*np.pi)
+    return lats, lons
+
 
 app.layout = html.Div(
     [
@@ -141,6 +156,14 @@ def update_graph(timeval, partyval, place_filter, relayout):
         pos = {'lat': float(place_filter.split(',')[0]), 'long': float(place_filter.split(',')[1])}
         docks = filter_by_radius(merged, pos, 500)
         merged = merged.loc[merged['dock_id'].isin(docks.values)]
+        lats, lons = convert_circle_to_latlon(pos, 500)
+        mapbox.add_trace(go.Scattermapbox(
+            lat=lats,
+            lon=lons,
+            mode='markers',
+            hoverinfo='none'
+        ))
+
 
     mapbox.add_trace(go.Scattermapbox(
         lat=merged["_lat"],
