@@ -15,14 +15,14 @@ public_token = 'pk.eyJ1IjoiZGNoaXF1ZTMiLCJhIjoiY2tmdmg5Y2FjMTFmbzJzczMwcnRhMG50b
 
 
 def colorselector(num_of_bikes, val):
-    if num_of_bikes < val:
-        color = 'rgb(255,0,0)'
+    if num_of_bikes < val: 
+        color = 'rgb(255,0,0)' # Red for not available
         #color = 'rgb(0,255,0)'
     elif num_of_bikes - 2 < val:
-        color = 'rgb(255,255,0)'
+        color = 'rgb(255,255,0)' # Yellow for available but close
         #color = 'rgb(0,255,0)'
     elif num_of_bikes > val:
-        color = 'rgb(0,255,0)'
+        color = 'rgb(0,255,0)' # Green for available
     return color
 
 def filter_by_radius(df, pos, r):
@@ -134,13 +134,21 @@ def change_party_val(value):
     return 'Bikes Needed: ' + str(value)
 
 @app.callback(
+    Output('radius-num-label', 'children'),
+    [Input("radius", "value")]
+)
+def change_party_val(value):
+    return 'Search radius: ' + str(value) + ' m'
+
+@app.callback(
     Output('map-graph', 'figure'),
     [Input('time-select-hour', 'value'),
      Input('party-size', 'value'),
-     Input('place-filter','value')],
+     Input('place-filter','value'),
+     Input('radius','value')],
     [State('map-graph', 'relayoutData')]
 )
-def update_graph(timeval, partyval, place_filter, relayout):
+def update_graph(timeval, partyval, place_filter, r, relayout):
     timestamp = pd.to_datetime(timeval, format='%Y-%m-%d %H')
 
     partyval = int(partyval)
@@ -152,44 +160,65 @@ def update_graph(timeval, partyval, place_filter, relayout):
 
     merged = asts.bike_stations.merge(subset_predictions, left_on='dock_id', right_on='station_id', how='left')
 
+    try:
+        center_map = relayout['mapbox.center']
+    except:
+        center_map = dict(
+                    lat=40.748,
+                    lon=-73.986
+                )
+
     if place_filter not in ['',None, []]:
         pos = {'lat': float(place_filter.split(',')[0]), 'long': float(place_filter.split(',')[1])}
-        docks = filter_by_radius(merged, pos, 500)
+        docks = filter_by_radius(merged, pos, int(r))
         merged = merged.loc[merged['dock_id'].isin(docks.values)]
-        lats, lons = convert_circle_to_latlon(pos, 500)
+        lats, lons = convert_circle_to_latlon(pos, int(r))
         mapbox.add_trace(go.Scattermapbox(
             lat=lats,
             lon=lons,
             mode='markers',
             hoverinfo='none'
         ))
+        center_map = dict(
+                    lat=pos['lat'],
+                    lon=pos['long']
+                )
 
+    trace_dict = {'rgb(255,0,0)': 'Unlikely bikes will be available',
+                  'rgb(255,255,0)': 'Bikes may be available',
+                  'rgb(0,255,0)': 'Likely bikes will be available',
+                  'rgb(0,0,0)': 'No availability prediction'}
 
-    mapbox.add_trace(go.Scattermapbox(
-        lat=merged["_lat"],
-        lon=merged["_long"],
-        mode='markers',
-        marker=go.scattermapbox.Marker(
-            size=17,
-            color= merged["colors"],
-            opacity=0.7
-        ),
-        text=merged["dock_name"],
-        hoverinfo='text'
-    ))
+    merged.loc[:,'colors'] = merged.loc[:,'colors'].fillna('rgb(0,0,0)') # black for missing data
+    print(merged['colors'].unique())
+    for key in trace_dict.keys():
+        mapbox.add_trace(go.Scattermapbox(
+            lat=merged.loc[merged["colors"] == key, "_lat"],
+            lon=merged.loc[merged["colors"] == key, "_long"],
+            mode='markers',
+            name=trace_dict[key],
+            marker=go.scattermapbox.Marker(
+                size=17,
+                color= merged.loc[merged["colors"] == key, "colors"],
+                opacity=0.7
+            ),
+            text=merged.loc[merged["colors"] == key, "dock_name"],
+            hoverinfo='text'
+        ))
 
     if relayout in ['', None, [], {'autosize': True}]:
         mapbox.update_layout(
             autosize=True,
             hovermode='closest',
-            showlegend=False,
+            showlegend=True,
+            legend=dict(x=0.01, y=0.99, 
+                        bgcolor="rgba(40,40,40,0.7)", 
+                        bordercolor="LightGray",
+                        font={'color':"LightGray"}),
             mapbox=dict(
                 accesstoken=public_token,
                 bearing=0,
-                center=dict(
-                    lat=40.748,
-                    lon=-73.986
-                ),
+                center=center_map,
                 pitch=0,
                 zoom=12,
                 style='dark'
@@ -200,11 +229,15 @@ def update_graph(timeval, partyval, place_filter, relayout):
         mapbox.update_layout(
             autosize=True,
             hovermode='closest',
-            showlegend=False,
+            showlegend=True,
+            legend=dict(x=0.01, y=0.99, 
+                        bgcolor="rgba(40,40,40,0.7)", 
+                        bordercolor="LightGray",
+                        font={'color':"LightGray"}),
             mapbox=dict(
                 accesstoken=public_token,
                 bearing=relayout['mapbox.bearing'],
-                center=relayout['mapbox.center'],
+                center=center_map,
                 pitch=relayout['mapbox.pitch'],
                 zoom=relayout['mapbox.zoom'],
                 style='dark'
@@ -269,11 +302,13 @@ def update_and_open_toast(clickdata, partyval, timeval):
     return dash.no_update, dash.no_update, dash.no_update
 
 @app.callback(
-    Output("place-filter", "options"), 
+    [Output("place-filter", "options"), 
+     Output("place-filter", "value")],
     [Input("submit-button", "n_clicks")],
-    [State("location-search","value")]
+    [State("location-search","value"),
+     State("place-filter","value")]
 )
-def on_button_click(n, loc):
+def on_button_click(n, loc, curr_val):
     if n and loc not in ['', None, []]:
         results = query_gp(loc)
         options = []
@@ -281,9 +316,12 @@ def on_button_click(n, loc):
             p.get_details()
             options += [{'label': p.formatted_address, 'value': str(p.geo_location['lat']) + "," + str(p.geo_location['lng'])}]
         print(options)
-        return options
+        if curr_val in options:
+            return options, curr_val
+        else:
+            return options, None
     else:
-        return dash.no_update
+        return [], None
 
 port = int(os.environ.get('PORT', 8080))
 server.run(debug=True, host="0.0.0.0", port=port)

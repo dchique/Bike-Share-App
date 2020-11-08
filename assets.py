@@ -76,6 +76,9 @@ class Assets:
             html.Label(id='party-size-num-label', className='mt-1'),
             html.Div('Search for stations nearby:', className='mt-3'),
             dbc.Input(type='text', placeholder='Enter address or landmark...', id='location-search'),
+            html.Label('Search radius:', className='mt-3'),
+            dbc.Input(bs_size="sm", id="radius", type="range", max=1000, min=100, step=100, value=500),
+            html.Label(id='radius-num-label', className='mt-1'),
             html.Div(dbc.Button('Search places', id='submit-button', color='dark', block=True, className='mt-3')),
             dbc.RadioItems(id='place-filter', className='mt-3')
         ], className='dash-bootstrap')
