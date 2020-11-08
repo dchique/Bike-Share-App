@@ -3,12 +3,7 @@ import base64
 import dash_html_components as html
 import dash_core_components as dcc
 import dash_bootstrap_components as dbc
-import glob
-import os
 import pandas as pd
-import numpy as np
-from datetime import datetime as dt
-
 
 
 class Assets:
@@ -57,10 +52,10 @@ class Assets:
         datePicker = dbc.Col(
             dcc.DatePickerSingle(
                 id='time-select-day',
-                min_date_allowed= self.timestamps[0].date(),
-                max_date_allowed= self.timestamps[-1].date(),
-                initial_visible_month= self.timestamps[0].date(),
-                date= self.timestamps[0].date()
+                min_date_allowed=self.timestamps[0].date(),
+                max_date_allowed=self.timestamps[-1].date(),
+                initial_visible_month=self.timestamps[0].date(),
+                date=self.timestamps[0].date()
             ),
             width=6
         )

@@ -5335,6 +5335,7 @@
    color: #fff;
    text-shadow: none;
    opacity: .5;
+   color: black;
  }
  
  .close:hover {

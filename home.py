@@ -71,7 +71,8 @@ landing_modal = dbc.Modal(
     [
         dbc.ModalHeader("Welcome to BikeCast for NYC!", style={'justify-content': 'center'}),
         dbc.ModalBody(
-            "You can use BikeCast to browse through citibike statikons in NYC. Set a time and party size to see predicted availability at a future time!"),
+            "You can use BikeCast to browse through citibike statikons in NYC. "
+            "Set a time and party size to see predicted availability at a future time!"),
     ],
     id="modal-lg",
     size="xl",
@@ -83,7 +84,7 @@ toast = dbc.Toast(
     id="graph-toast",
     is_open=False,
     dismissable=True,
-    icon="info",
+    icon="dark",
     # top: 66 positions the toast below the navbar
     style={"position": "fixed", "top": 40, "right": 10, "width": 650},
     className="dash-bootstrap"
