@@ -71,7 +71,7 @@ landing_modal = dbc.Modal(
     [
         dbc.ModalHeader("Welcome to BikeCast for NYC!", style={'justify-content': 'center'}),
         dbc.ModalBody([
-            html.Div("You can use BikeCast to browse through citibike statikons in NYC."),
+            html.Div("You can use BikeCast to browse through citibike stations in NYC."),
             html.Div("This visualization assumes today is August 24th, 2020"),
             html.Div("In the left sidebar, you can select a time+hour and party size to see predicted availability at a future time! (7 days ahead)"),
             html.Div("__"*10),
