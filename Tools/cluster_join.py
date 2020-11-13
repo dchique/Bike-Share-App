@@ -7,5 +7,3 @@ c4 = pd.read_csv('./Tools/cluster 4 predictions.csv')
 
 combined = pd.concat([c1,c2,c3,c4], ignore_index=True)
 combined.to_csv('./Tools/all_predictions.csv')
-
-test = 11
